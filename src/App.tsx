@@ -4,8 +4,9 @@ import viteLogo from '/vite.svg';
 import './App.css';
 import { Box, Button, Typography } from '@mui/material';
 
-// TODO1: score 記録機能
-// TODO2: ボタンに各手の画像表示
+import rockImage from './assets/janken_gu.png';
+import paperImage from './assets/janken_pa.png';
+import scissorsImage from './assets/janken_choki.png';
 
 interface HandDataType {
   // type: string;
@@ -19,16 +20,28 @@ interface TaskType {
   text: string;
 }
 
+enum HandEnum {
+  Rock = 0,
+  Paper = 1,
+  Scissors = 2,
+}
+
+enum TaskEnum {
+  Win = 0,
+  Lose = 1,
+  Draw = 2,
+}
+
 const HandDataDict: { [index: number]: HandDataType } = {
-  0: { type: 0, imgPath: './src/assets/janken_gu.png' }, // 'Rock'
-  1: { type: 1, imgPath: './src/assets/janken_pa.png' }, // 'Paper'
-  2: { type: 2, imgPath: './src/assets/janken_choki.png' }, // 'Scissors'
+  0: { type: HandEnum.Rock, imgPath: rockImage },
+  1: { type: HandEnum.Paper, imgPath: paperImage },
+  2: { type: HandEnum.Scissors, imgPath: scissorsImage },
 };
 
 const TargetTaskDict: { [index: number]: TaskType } = {
-  0: { type: 0, text: '勝て！' }, // 'Win'
-  1: { type: 1, text: '負けろ！' }, // 'Lose'
-  2: { type: 2, text: '引き分けろ！' }, // 'Draw'
+  0: { type: TaskEnum.Win, text: '勝て！' },
+  1: { type: TaskEnum.Lose, text: '負けろ！' },
+  2: { type: TaskEnum.Draw, text: '引き分けろ！' },
 };
 
 const getRandomTaskData = (): TaskType => {
@@ -53,46 +66,47 @@ function App() {
   const [oppoHandState, setOppositeHandState] =
     useState<HandDataType>(initOppoHandState);
 
-  const judgementGame = (yourHandIndex: number): boolean => {
-    const oppoInfo: [number, number] = [oppoHandState.type, oppoTaskState.type];
-    let retIsWhetherWin = false;
-    switch (yourHandIndex) {
-      // Rock
-      case 0:
-        // If Opposite hand state is Rock & Draw, you are win.
-        if (oppoInfo[0] === 0 && oppoInfo[1] === 2) retIsWhetherWin = true;
-        // If Opposite hand state is Paper & Lose, you are win.
-        else if (oppoInfo[0] === 1 && oppoInfo[1] === 1) retIsWhetherWin = true;
-        // If Opposite hand state is Scissors & Win, you are win.
-        else if (oppoInfo[0] === 2 && oppoInfo[1] === 0) retIsWhetherWin = true;
-        break;
+  const [score, setScore] = useState({ win: 0, lose: 0 });
 
-      // Paper
-      case 1:
-        // If Opposite hand state is Rock & Win, you are win.
-        if (oppoInfo[0] === 0 && oppoInfo[1] === 0) retIsWhetherWin = true;
-        // If Opposite hand state is Paper & Draw, you are win.
-        else if (oppoInfo[0] === 1 && oppoInfo[1] === 2) retIsWhetherWin = true;
-        // If Opposite hand state is Scissors & Lose, you are win.
-        else if (oppoInfo[0] === 2 && oppoInfo[1] === 1) retIsWhetherWin = true;
-        break;
+  const updateScore = (didWin: boolean) => {
+    setScore((prevScore) => ({
+      win: prevScore.win + (didWin ? 1 : 0),
+      lose: prevScore.lose + (didWin ? 0 : 1),
+    }));
+  };
 
-      // Scissors
-      case 2:
-        // If Opposite hand state is Rock & Lose, you are win.
-        if (oppoInfo[0] === 0 && oppoInfo[1] === 1) retIsWhetherWin = true;
-        // If Opposite hand state is Paper & Win, you are win.
-        else if (oppoInfo[0] === 1 && oppoInfo[1] === 0) retIsWhetherWin = true;
-        // If Opposite hand state is Scissors & Draw, you are win.
-        else if (oppoInfo[0] === 2 && oppoInfo[1] === 2) retIsWhetherWin = true;
+  const isWin = (player: HandEnum, opponent: HandEnum): boolean => {
+    return (player - opponent + 3) % 3 === 1;
+  };
+
+  const isDraw = (player: HandEnum, opponent: HandEnum): boolean => {
+    return player === opponent;
+  };
+
+  const judgementGame = (yourHand: HandEnum): boolean => {
+    let result = false;
+    const opponentHand = oppoHandState.type as HandEnum;
+    const task = oppoTaskState.type as TaskEnum;
+
+    switch (task) {
+      case TaskEnum.Win:
+        result = isWin(yourHand, opponentHand);
+        break;
+      case TaskEnum.Lose:
+        result = isWin(opponentHand, yourHand);
+        break;
+      case TaskEnum.Draw:
+        result = isDraw(yourHand, opponentHand);
         break;
     }
-    if (retIsWhetherWin)
-      console.log("You are Win!!");
-    else
-      console.log("You are Lose...");
 
-    return retIsWhetherWin;
+    if (result) {
+      console.log('You are Win!!');
+    } else {
+      console.log('You are Lose...');
+    }
+
+    return result;
   };
 
   const setNextOppositeHand = () => {
@@ -103,12 +117,16 @@ function App() {
   };
 
   const playGame = (yourHandIndex: number) => {
-    judgementGame(yourHandIndex);
+    const resultGame: boolean = judgementGame(yourHandIndex);
     setNextOppositeHand();
-  }
+    updateScore(resultGame);
+  };
 
   return (
     <>
+      <Typography sx={{ marginBottom: '10px' }} fontSize={'20px'}>
+        win: {score.win} / lose: {score.lose}
+      </Typography>
       <Typography
         sx={{ marginBottom: '10px' }}
         fontSize={'25px'}
@@ -123,14 +141,14 @@ function App() {
         </Button>
       </Box> */}
       <Box sx={{ marginTop: '10px' }}>
-        <Button variant="contained" sx={{ margin: '0px 1px' }} onClick={() => {playGame(0)}}>
-          Gu
+        <Button onClick={() => playGame(HandEnum.Rock)}>
+          <img src={rockImage} alt="Rock" width={50} />
         </Button>
-        <Button variant="contained" sx={{ margin: '0px 1px' }} onClick={() => {playGame(1)}}>
-          Pa
+        <Button onClick={() => playGame(HandEnum.Paper)}>
+          <img src={paperImage} alt="Paper" width={50} />
         </Button>
-        <Button variant="contained" sx={{ margin: '0px 1px' }} onClick={() => {playGame(2)}}>
-          Choki
+        <Button onClick={() => playGame(HandEnum.Scissors)}>
+          <img src={scissorsImage} alt="Scissors" width={50} />
         </Button>
       </Box>
     </>
